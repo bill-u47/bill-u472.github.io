@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reminder Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Set a Reminder</h1>
+        <form id="reminderForm">
+            <div class="form-group">
+                <label for="reminderName">Reminder Name:</label>
+                <input type="text" id="reminderName" name="reminderName" required 
+                       placeholder="Enter reminder name">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" name="email" required 
+                       placeholder="Enter your email">
+            </div>
+
+            <div class="form-group">
+                <label for="reminderDate">Date:</label>
+                <input type="date" id="reminderDate" name="reminderDate" required>
+            </div>
+
+            <div class="form-group">
+                <label for="reminderTime">Time:</label>
+                <input type="time" id="reminderTime" name="reminderTime" required>
+            </div>
+
+            <button type="submit">Set Reminder</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script>
+         document.getElementById('reminderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const messageDiv = document.getElementById('message');
+            
+            // Get form values
+            const reminderName = document.getElementById('reminderName').value;
+            const email = document.getElementById('email').value;
+            const reminderDate = document.getElementById('reminderDate').value;
+            const reminderTime = document.getElementById('reminderTime').value;
+            
+            try {
+                const response = await fetch('http://localhost:5000/set_reminder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        reminderName,
+                        email,
+                        reminderDate,
+                        reminderTime
+                    }),
+                    mode: "cors",
+                    credentials:"same-origin"
+
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    messageDiv.className = 'success';
+                    messageDiv.textContent = 'Reminder set successfully!';
+                    // Clear the text inputs
+                    e.target.reset();
+                } else {
+                    messageDiv.className = 'error';
+                    messageDiv.textContent = `Error: ${data.message}`;
+                }
+            } catch (error) {
+                messageDiv.className = 'error';
+                messageDiv.textContent = 'Error connecting to server. Please try again.';
+                console.error('Error:', error);
+            }
+        });
+
+        // Set minimum date to today
+        const dateInput = document.getElementById('reminderDate');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    </script>
+</body>
+</html>
