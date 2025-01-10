@@ -2,12 +2,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 import smtplib
 import os
 from typing import Optional
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 app = Flask(__name__)
 CORS(app)
@@ -51,6 +52,15 @@ def send_email(
         except:
             pass
 
+def get_interval_seconds(interval, unit):
+    unit_conversions = {
+        'hours': 3600,
+        'days': 86400,
+        'weeks': 604800,
+        'months': 2592000  # Approximating a month as 30 days
+    }
+    return int(interval) * unit_conversions.get(unit, 3600)
+
 @app.route('/set_reminder', methods=['POST'])
 def set_reminder():
     try:
@@ -59,6 +69,7 @@ def set_reminder():
         receiver_email = data.get('email')
         reminder_date = data.get('reminderDate')
         reminder_time = data.get('reminderTime')
+        repeat_data = data.get('repeat')
         
         if not all([reminder_name, receiver_email, reminder_date, reminder_time]):
             return jsonify({
@@ -80,22 +91,42 @@ def set_reminder():
         message = f"""
         What's poppin
 
-        This is to remind you about {reminder_name}
-        This was scheduled for {reminder_date} at {reminder_time}
+        you MUST do this: {reminder_name}
+        You set this for {reminder_date} at {reminder_time}
 
         This was a message from Andrew's Bot
         """
 
-        scheduler.add_job(
-            send_email,
-            'date',
-            run_date=reminder_datetime,
-            args=[sender_email, receiver_email, f"Reminder: {reminder_name}", message]
-        )
+        if repeat_data and repeat_data.get('interval') and repeat_data.get('unit'):
+            # Set up recurring reminder
+            interval_seconds = get_interval_seconds(
+                repeat_data['interval'],
+                repeat_data['unit']
+            )
+            
+            scheduler.add_job(
+                send_email,
+                'interval',
+                seconds=interval_seconds,
+                start_date=reminder_datetime,
+                args=[sender_email, receiver_email, f"Reminder: {reminder_name}", message]
+            )
+            
+            response_message = f'The repeating reminder is scheduled for {repeat_data["interval"]} {repeat_data["unit"]}'
+        else:
+            # Set up one-time reminder
+            scheduler.add_job(
+                send_email,
+                'date',
+                run_date=reminder_datetime,
+                args=[sender_email, receiver_email, f"Reminder: {reminder_name}", message]
+            )
+            
+            response_message = 'Successfully made'
 
         return jsonify({
             'status': 'success',
-            'message': 'Reminder scheduled successfully'
+            'message': response_message
         }), 200
 
     except Exception as e:

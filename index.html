@@ -37,12 +37,22 @@
             font-weight: bold;
         }
 
-        input {
+        input, select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 16px;
+        }
+
+        .repeat-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .repeat-container select {
+            flex: 1;
         }
 
         button {
@@ -105,22 +115,64 @@
                 <input type="time" id="reminderTime" name="reminderTime" required>
             </div>
 
+            <div class="form-group">
+                <label for="repeatEnabled">Repeat this reminder?</label>
+                <select id="repeatEnabled" name="repeatEnabled">
+                    <option value="no">Don't repeat</option>
+                    <option value="yes">Repeat</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="repeatOptionsContainer" style="display: none;">
+                <label>Repeat Settings:</label>
+                <div class="repeat-container">
+                    <input type="number" id="repeatInterval" name="repeatInterval" 
+                           min="1" value="1" style="width: 80px;">
+                    <select id="repeatUnit" name="repeatUnit">
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                    </select>
+                </div>
+            </div>
+
             <button type="submit">Set Reminder</button>
         </form>
         <div id="message"></div>
     </div>
 
     <script>
-         document.getElementById('reminderForm').addEventListener('submit', async (e) => {
+            //do they want to repeat?
+            document.getElementById('repeatEnabled').addEventListener('change', function() {
+            const repeatOptions = document.getElementById('repeatOptionsContainer');
+            if (this.value === 'yes') {
+                repeatOptions.style.display = 'block';
+            } else {
+                repeatOptions.style.display = 'none';
+            }
+        });
+
+        document.getElementById('reminderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const messageDiv = document.getElementById('message');
             
-            // Get form values
+            //values
             const reminderName = document.getElementById('reminderName').value;
             const email = document.getElementById('email').value;
             const reminderDate = document.getElementById('reminderDate').value;
             const reminderTime = document.getElementById('reminderTime').value;
+            const repeatEnabled = document.getElementById('repeatEnabled').value;
+            
+            //if yes, then these are settings
+            let repeatData = false;
+            if (repeatEnabled === 'yes') {
+                repeatData = {
+                    interval: document.getElementById('repeatInterval').value,
+                    unit: document.getElementById('repeatUnit').value
+                };
+            }
             
             try {
                 const response = await fetch('http://localhost:5000/set_reminder', {
@@ -132,11 +184,11 @@
                         reminderName,
                         email,
                         reminderDate,
-                        reminderTime
+                        reminderTime,
+                        repeat: repeatData
                     }),
                     mode: "cors",
-                    credentials:"same-origin"
-
+                    credentials: "same-origin"
                 });
                 
                 const data = await response.json();
@@ -144,7 +196,7 @@
                 if (response.ok) {
                     messageDiv.className = 'success';
                     messageDiv.textContent = 'Reminder set successfully!';
-                    // Clear the text inputs
+                    
                     e.target.reset();
                 } else {
                     messageDiv.className = 'error';
@@ -157,7 +209,6 @@
             }
         });
 
-        // Set minimum date to today
         const dateInput = document.getElementById('reminderDate');
         const today = new Date().toISOString().split('T')[0];
         dateInput.min = today;
